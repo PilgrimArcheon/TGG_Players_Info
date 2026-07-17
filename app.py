@@ -40,10 +40,12 @@ DASHBOARD_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>TRIVIA</h1>
-        <input type="password" id="tokenInput" placeholder="Enter Secret Token">
-        <button id="exportBtn" onclick="startExport()">PLAY NOW →</button>
-        <p id="status">Waiting for input...</p>
+    <!-- Replace the URL below with the direct link to your hosted logo -->
+    <img src="https://i.imgur.com/VGHlcJB.png" alt="TRIVIA Logo" style="width: 200px; margin-bottom: 20px;">
+    
+    <input type="password" id="tokenInput" placeholder="Enter Secret Token">
+    <button id="exportBtn" onclick="startExport()">PLAY NOW →</button>
+    <p id="status">Waiting for input...</p>
     </div>
 
     <script>
