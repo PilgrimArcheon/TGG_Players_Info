@@ -1,12 +1,57 @@
-from flask import Flask, Response, request, abort
-import requests
-import time
-import pandas as pd
-import json
-import io
-import os
+from flask import Flask, Response, request, render_template_string, jsonify
+import requests, time, pandas as pd, json, io, os
 
 app = Flask(__name__)
+
+DASHBOARD_HTML = """
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>TGG Player Export</h1>
+    <input type="password" id="tokenInput" placeholder="Enter Secret Token">
+    <button id="exportBtn" onclick="startExport()">Start Export</button>
+    <p>Status: <span id="status">Waiting for input...</span></p>
+
+    <script>
+        async function startExport() {
+            const token = document.getElementById('tokenInput').value;
+            const status = document.getElementById('status');
+            const btn = document.getElementById('exportBtn');
+            
+            btn.disabled = true;
+            status.innerText = "Processing... this can take a minute.";
+            
+            try {
+                const response = await fetch('/generate-export', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({token: token})
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "TGG_Players_Info.csv";
+                    a.click();
+                    status.innerText = "Success! Download started.";
+                } else {
+                    status.innerText = "Error: " + await response.text();
+                }
+            } catch (e) {
+                status.innerText = "Connection Error.";
+            }
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/')
+def index():
+    return render_template_string(DASHBOARD_HTML)
 
 # Pull secrets securely from Environment Variables
 SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
@@ -24,8 +69,9 @@ HEADERS = {"X-SecretKey": SECRET_KEY, "Content-Type": "application/json"}
 @app.route('/generate-export')
 def generate_export():
     # 1. Security Check
-    if request.args.get('token') != SECRET_TOKEN:
-        abort(403)
+    data = request.json
+    if data.get('token') != os.environ.get("SECRET_TOKEN"):
+        return "Invalid Token", 403
         
     # 2. Trigger Export
     export_res = requests.post(
