@@ -15,8 +15,8 @@ DASHBOARD_HTML = """
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #151521;
-            --card-bg: #1e1e2d;
+            --bg-color: #12121a;
+            --card-bg: #1a1a24;
             --accent: #FFA500;
             --text-main: #ffffff;
             --text-muted: #a1a1b5;
@@ -28,28 +28,30 @@ DASHBOARD_HTML = """
             min-height: 100vh; box-sizing: border-box;
         }
         
-        /* LOGIN SCREEN (Matches your exact layout) */
+        /* LOGIN SCREEN (Matched perfectly to your screenshot) */
         #loginSection {
             display: flex; justify-content: center; align-items: center; height: 100vh;
         }
         .container { 
-            text-align: center; background: var(--card-bg); padding: 40px; 
+            text-align: center; background: var(--card-bg); padding: 50px 40px; 
             border-radius: 12px; border: 1px solid var(--border); 
-            max-width: 400px; width: 100%; 
+            max-width: 450px; width: 100%; box-sizing: border-box;
         }
         input { 
-            padding: 12px; width: 80%; border-radius: 6px; 
-            border: none; margin-bottom: 20px; display: block; margin: 0 auto 20px;
-            background: #151521; color: white; border: 1px solid var(--border);
+            padding: 15px; width: 100%; border-radius: 6px; 
+            border: 1px solid var(--border); margin-bottom: 20px; 
+            background: var(--bg-color); color: white; box-sizing: border-box;
+            font-size: 16px; font-family: monospace; letter-spacing: 2px;
         }
+        input:focus { outline: 1px solid var(--accent); }
         button { 
             background-color: var(--accent); color: #000; border: none; 
             padding: 15px 30px; font-weight: bold; border-radius: 6px; 
-            cursor: pointer; margin-top: 10px; transition: 0.2s; width: 100%;
+            cursor: pointer; transition: 0.2s; width: 100%; font-size: 14px;
         }
         button:hover { background-color: #e69500; }
         button:disabled { background-color: #555; cursor: not-allowed; color: #888; }
-        #status { color: var(--accent); margin-top: 15px; display: block; font-weight: bold; }
+        #status { color: var(--accent); margin-top: 20px; display: block; font-weight: bold; font-size: 14px; }
         
         /* DASHBOARD LAYOUT */
         #dashboard { display: none; padding: 30px; max-width: 1400px; margin: auto; }
@@ -67,7 +69,7 @@ DASHBOARD_HTML = """
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th { color: var(--text-muted); padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.9em; text-transform: uppercase; }
         td { padding: 15px; border-bottom: 1px solid var(--border); }
-        .status-badge { background: rgba(76, 175, 80, 0.2); color: #4CAF50; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .status-badge { background: rgba(76, 175, 80, 0.15); color: #4CAF50; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -75,10 +77,10 @@ DASHBOARD_HTML = """
     <!-- LOGIN SCREEN -->
     <div id="loginSection">
         <div class="container">
-            <img src="https://i.imgur.com/VGHlcJB.png" alt="TRIVIA Logo" style="width: 200px; margin-bottom: 20px;">
+            <img src="https://i.imgur.com/VGHlcJB.png" alt="TRIVIA Logo" style="width: 200px; margin-bottom: 40px;">
             <input type="password" id="tokenInput" placeholder="Enter Secret Token">
             <button id="exportBtn" onclick="startExport()">ACCESS ADMIN BOARD →</button>
-            <p id="status">Waiting for input...</p>
+            <p id="status"></p>
         </div>
     </div>
 
@@ -90,7 +92,7 @@ DASHBOARD_HTML = """
                 <h2 style="margin: 5px 0 0 0;">Admin Overview</h2>
             </div>
             <button onclick="downloadCSV()" style="width: auto; padding: 12px 25px;">
-                ↓ DOWNLOAD CSV DATA
+                ↓ DOWNLOAD CLEAN CSV
             </button>
         </div>
 
@@ -159,7 +161,7 @@ DASHBOARD_HTML = """
             const status = document.getElementById('status');
             const btn = document.getElementById('exportBtn');
             
-            if (!token) { status.innerText = "Please enter a token."; return; }
+            if (!token) { status.innerText = "Error: Please enter a token."; return; }
 
             btn.disabled = true;
             status.innerText = "Authenticating & Assembling Data...\\n(This takes about 1-2 minutes)";
@@ -192,7 +194,7 @@ DASHBOARD_HTML = """
                             labels: Object.keys(data.devices), 
                             datasets: [{ 
                                 data: Object.values(data.devices), 
-                                backgroundColor: ['#FFA500', '#00d2ff', '#888', '#4CAF50'],
+                                backgroundColor: ['#FFA500', '#00d2ff', '#888'],
                                 borderWidth: 0
                             }] 
                         },
@@ -252,11 +254,12 @@ DASHBOARD_HTML = """
                     });
 
                 } else {
-                    status.innerText = "Error: " + await response.text();
+                    const errText = await response.text();
+                    status.innerText = "Error: " + (errText || "Invalid Token");
                     btn.disabled = false;
                 }
             } catch (e) {
-                status.innerText = "Connection Error. Please try again.";
+                status.innerText = "Error: Connection Failed. Please try again.";
                 btn.disabled = false;
             }
         }
@@ -315,87 +318,103 @@ def load_data():
     index_res = requests.get(index_url)
     tsv_links = [link for link in index_res.text.strip().split('\n') if link]
 
-    # 4. Download & Merge
-    dataframes = []
+    # 4. Memory-Optimized Processing
+    total_raw = 0
+    valid_rows = []
+    device_counts = {"iOS": 0, "Android": 0, "Unknown": 0}
+    country_counts = {}
+    all_dates = []
+
     for link in tsv_links:
         try:
+            # Read minimal required data to prevent OOM Code 139 errors
             df = pd.read_csv(link, sep='\t', dtype=str)
-            if not df.empty:
-                dataframes.append(df)
+            total_raw += len(df)
+            
+            for _, row in df.iterrows():
+                username, email, device = "Guest", None, "Unknown"
+                raw = row.get('LinkedAccounts')
+                
+                # Parse JSON quickly
+                if pd.notna(raw) and raw != '[]':
+                    try:
+                        clean_str = str(raw).strip('"').replace('""', '"')
+                        linked_accs = json.loads(clean_str)
+                        for entry in linked_accs:
+                            if not isinstance(entry, dict): continue
+                            plat = entry.get("Platform")
+                            if plat == "PlayFab":
+                                username = entry.get("Username", "Guest")
+                                email = entry.get("Email")
+                            elif plat in ["IOSDevice", "GameCenter"]:
+                                device = "iOS"
+                            elif plat in ["AndroidDevice", "GooglePlay"]:
+                                device = "Android"
+                    except:
+                        pass
+                
+                # Track Metrics (All Users)
+                device_counts[device] = device_counts.get(device, 0) + 1
+                
+                country = str(row.get('Locations_LastLogin_CountryCode', 'Unknown'))
+                if country == 'nan' or not country: country = 'Unknown'
+                if country != 'Unknown':
+                    country_counts[country] = country_counts.get(country, 0) + 1
+                    
+                created = pd.to_datetime(row.get('Created'), errors='coerce')
+                if pd.notna(created):
+                    all_dates.append(created)
+                
+                # Store Cleaned Valid Users Only
+                if pd.notna(email) and str(email).lower() != 'null':
+                    valid_rows.append({
+                        'Username': str(username).title(),
+                        'Sign up date': created.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(created) else "",
+                        'Email': email,
+                        'Country': country,
+                        'Device': device
+                    })
+            
+            # Immediately delete the raw shard from RAM
+            del df 
         except:
             pass
+
+    # 5. Build the Final Output DataFrame
+    final_export_df = pd.DataFrame(valid_rows)
     
-    if not dataframes:
-        return "No data found", 404
-
-    master_df = pd.concat(dataframes, ignore_index=True)
-
-    # 5. Extraction Logic (Line-by-line processing)
-    def extract_player_details(row):
-        username, email, device = "Guest", None, "Unknown"
-        raw = row.get('LinkedAccounts')
-        if pd.notna(raw) and raw != '[]':
-            try:
-                clean_str = str(raw).strip('"').replace('""', '"')
-                linked_accs = json.loads(clean_str)
-                for entry in linked_accs:
-                    if not isinstance(entry, dict): continue
-                    plat = entry.get("Platform")
-                    if plat == "PlayFab":
-                        username = entry.get("Username", "Guest")
-                        email = entry.get("Email")
-                    elif plat in ["IOSDevice", "GameCenter"]:
-                        device = "iOS"
-                    elif plat in ["AndroidDevice", "GooglePlay"]:
-                        device = "Android"
-            except:
-                pass
-        return pd.Series([username, email, device])
-
-    master_df[['ExtractedUsername', 'ExtractedEmail', 'Device']] = master_df.apply(extract_player_details, axis=1)
-
-    # 6. Format Raw Data
-    master_df['Sign up date'] = pd.to_datetime(master_df['Created'], errors='coerce')
-    master_df['Country'] = master_df['Locations_LastLogin_CountryCode'].fillna("Unknown")
-    master_df['Username'] = master_df['ExtractedUsername'].astype(str).str.title()
-    master_df['Email'] = master_df['ExtractedEmail']
-
-    # --- CALCULATE DASHBOARD STATS ---
-    total_raw = len(master_df)
-    
-    # Identify Valid vs Guests
-    valid_mask = master_df['Email'].notna() & (master_df['Email'] != 'null')
-    valid_count = int(valid_mask.sum())
-    guest_count = total_raw - valid_count
-
-    # Country & Device Metrics
-    country_counts = master_df[master_df['Country'] != "Unknown"]['Country'].value_counts()
-    top_country = country_counts.index[0] if not country_counts.empty else "N/A"
-    device_counts = master_df['Device'].value_counts().to_dict()
-
-    # Time-Series Activity (Last 14 days of signups)
-    activity_series = master_df['Sign up date'].dt.strftime('%b %d').value_counts().sort_index().tail(14).to_dict()
-
-    # Recent Players Table (Grab top 6 valid emails)
-    recent_players = []
-    recent_df = master_df[valid_mask].sort_values(by='Sign up date', ascending=False).head(6)
-    for _, row in recent_df.iterrows():
-        recent_players.append({
-            "Name": row['Username'],
-            "Email": row['Email'],
-            "Date": row['Sign up date'].strftime('%Y-%m-%d') if pd.notna(row['Sign up date']) else "N/A",
-            "Device": row['Device']
-        })
-
-    # 7. Format Clean Final Export Data (Zoho Ready)
-    clean_df = master_df[valid_mask].copy()
-    final_export_df = clean_df[['Username', 'Sign up date', 'Email', 'Country', 'Device']]
-    
-    # Save to Global Cache
+    # Save to Global Cache for one-click downloading later
     global DATA_CACHE
     DATA_CACHE["df"] = final_export_df
 
-    # 8. Return JSON payload to frontend
+    # 6. Final Dashboard Calculations
+    valid_count = len(final_export_df)
+    guest_count = total_raw - valid_count
+    
+    top_country = "N/A"
+    if country_counts:
+        top_country = max(country_counts, key=country_counts.get)
+
+    activity_series = {}
+    if all_dates:
+        dates_series = pd.Series(all_dates)
+        # Get last 14 days of signups
+        activity_series = dates_series.dt.strftime('%b %d').value_counts().sort_index().tail(14).to_dict()
+
+    # Grab Top 6 Most Recent Players
+    recent_players = []
+    if not final_export_df.empty:
+        # Sort by sign up date and grab top 6
+        sorted_recent = final_export_df.sort_values(by='Sign up date', ascending=False).head(6)
+        for _, row in sorted_recent.iterrows():
+            recent_players.append({
+                "Name": row['Username'],
+                "Email": row['Email'],
+                "Date": row['Sign up date'].split()[0] if row['Sign up date'] else "N/A",
+                "Device": row['Device']
+            })
+
+    # 7. Return JSON payload to frontend
     payload = {
         "metrics": {
             "total": total_raw,
@@ -410,7 +429,6 @@ def load_data():
 
     return jsonify(payload)
 
-
 @app.route('/download-csv', methods=['GET'])
 def download_csv():
     token = request.args.get('token')
@@ -418,7 +436,7 @@ def download_csv():
         abort(403)
         
     global DATA_CACHE
-    if DATA_CACHE["df"] is None:
+    if DATA_CACHE["df"] is None or DATA_CACHE["df"].empty:
         return "Session expired or data not loaded. Please refresh the dashboard.", 404
 
     output = io.StringIO()
