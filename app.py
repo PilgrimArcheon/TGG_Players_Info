@@ -348,6 +348,9 @@ def index():
 @app.route('/load-data', methods=['POST'])
 def load_data():
     data = request.get_json()
+    print("Received:", data.get("token"))
+    print("Expected:", os.environ.get("SECRET_TOKEN"))
+
     if not data or data.get('token') != os.environ.get("SECRET_TOKEN"):
         return "Invalid Token", 403
 
