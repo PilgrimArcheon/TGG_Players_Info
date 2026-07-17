@@ -44,7 +44,7 @@ DASHBOARD_HTML = """
     <img src="https://i.imgur.com/VGHlcJB.png" alt="TRIVIA Logo" style="width: 200px; margin-bottom: 20px;">
     
     <input type="password" id="tokenInput" placeholder="Enter Secret Token">
-    <button id="exportBtn" onclick="startExport()">PLAY NOW →</button>
+    <button id="exportBtn" onclick="startExport()">EXPORT PLAYERS INFO →</button>
     <p id="status">Waiting for input...</p>
     </div>
 
