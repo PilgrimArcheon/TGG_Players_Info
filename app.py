@@ -18,6 +18,7 @@ DASHBOARD_HTML = """
             --bg-color: #12121a;
             --card-bg: #1a1a24;
             --accent: #FFA500;
+            --accent-alt: #00d2ff;
             --text-main: #ffffff;
             --text-muted: #a1a1b5;
             --border: #2b2b40;
@@ -28,7 +29,7 @@ DASHBOARD_HTML = """
             min-height: 100vh; box-sizing: border-box;
         }
         
-        /* LOGIN SCREEN (Matched perfectly to your screenshot) */
+        /* LOGIN SCREEN */
         #loginSection {
             display: flex; justify-content: center; align-items: center; height: 100vh;
         }
@@ -54,7 +55,7 @@ DASHBOARD_HTML = """
         #status { color: var(--accent); margin-top: 20px; display: block; font-weight: bold; font-size: 14px; }
         
         /* DASHBOARD LAYOUT */
-        #dashboard { display: none; padding: 30px; max-width: 1400px; margin: auto; }
+        #dashboard { display: none; padding: 30px; max-width: 1500px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .header img { width: 120px; }
         .top-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
@@ -62,14 +63,17 @@ DASHBOARD_HTML = """
         .card h3 { color: var(--text-muted); font-size: 0.9em; margin-top: 0; text-transform: uppercase; letter-spacing: 1px;}
         .card .value { font-size: 2.2em; font-weight: bold; margin: 10px 0; }
         
-        .charts-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 30px; }
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        /* CHARTS GRID (Updated to 3 columns) */
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .chart-container { position: relative; height: 280px; width: 100%; }
         
-        /* TABLE STYLES */
+        /* TABLES GRID */
+        .tables-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th { color: var(--text-muted); padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.9em; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid var(--border); }
+        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.95em; }
         .status-badge { background: rgba(76, 175, 80, 0.15); color: #4CAF50; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .status-badge.alt { background: rgba(0, 210, 255, 0.15); color: var(--accent-alt); }
     </style>
 </head>
 <body>
@@ -119,37 +123,62 @@ DASHBOARD_HTML = """
         <!-- CHARTS -->
         <div class="charts-grid">
             <div class="card">
-                <h3>User Behavior (Devices)</h3>
+                <h3>Device Distribution</h3>
                 <div class="chart-container">
                     <canvas id="deviceChart"></canvas>
                 </div>
             </div>
             <div class="card">
-                <h3>Game Performance (Sign-ups)</h3>
+                <h3>New Sign-ups (14 Days)</h3>
                 <div class="chart-container">
                     <canvas id="activityChart"></canvas>
                 </div>
             </div>
+            <div class="card">
+                <h3>Login Activity (14 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="loginChart"></canvas>
+                </div>
+            </div>
         </div>
 
-        <!-- RECENT PLAYERS TABLE -->
-        <div class="card">
-            <h3>Recent Players</h3>
-            <table id="playersTable">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Joined Date</th>
-                        <th>Device</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Populated by JS -->
-                </tbody>
-            </table>
+        <!-- TABLES GRID -->
+        <div class="tables-grid">
+            <!-- RECENT SIGN-UPS -->
+            <div class="card">
+                <h3>Recent Sign-ups</h3>
+                <table id="recentTable">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player Name</th>
+                            <th>Status</th>
+                            <th>Joined Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TOP ACTIVE PLAYERS -->
+            <div class="card">
+                <h3>Top Active Players</h3>
+                <table id="topPlayersTable">
+                    <thead>
+                        <tr>
+                            <th>Player Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -177,24 +206,23 @@ DASHBOARD_HTML = """
                     const data = await response.json();
                     cachedToken = token;
                     
-                    // Swap UI
                     document.getElementById('loginSection').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
                     
-                    // Populate Cards
+                    // Cards
                     document.getElementById('valTotal').innerText = data.metrics.total.toLocaleString();
                     document.getElementById('valValid').innerText = data.metrics.valid.toLocaleString();
                     document.getElementById('valGuest').innerText = data.metrics.guests.toLocaleString();
                     document.getElementById('valCountry').innerText = data.metrics.top_country;
                     
-                    // Render Device Donut Chart
+                    // Device Donut Chart
                     new Chart(document.getElementById('deviceChart'), {
                         type: 'doughnut',
                         data: { 
                             labels: Object.keys(data.devices), 
                             datasets: [{ 
                                 data: Object.values(data.devices), 
-                                backgroundColor: ['#FFA500', '#00d2ff', '#888'],
+                                backgroundColor: ['#FFA500', '#00d2ff', '#888', '#4CAF50'],
                                 borderWidth: 0
                             }] 
                         },
@@ -205,7 +233,7 @@ DASHBOARD_HTML = """
                         }
                     });
 
-                    // Render Activity Line Chart
+                    // Sign-ups Line Chart
                     new Chart(document.getElementById('activityChart'), {
                         type: 'line',
                         data: {
@@ -215,9 +243,7 @@ DASHBOARD_HTML = """
                                 data: Object.values(data.activity),
                                 borderColor: '#8a2be2',
                                 backgroundColor: 'rgba(138, 43, 226, 0.1)',
-                                borderWidth: 3,
-                                tension: 0.4,
-                                fill: true
+                                borderWidth: 3, tension: 0.4, fill: true
                             }]
                         },
                         options: {
@@ -230,11 +256,33 @@ DASHBOARD_HTML = """
                         }
                     });
 
-                    // Populate Table
-                    const tbody = document.querySelector('#playersTable tbody');
-                    tbody.innerHTML = '';
+                    // Logins Bar Chart
+                    new Chart(document.getElementById('loginChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(data.logins),
+                            datasets: [{
+                                label: 'Daily Logins',
+                                data: Object.values(data.logins),
+                                backgroundColor: '#00d2ff',
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: '#2b2b40' }, ticks: { color: '#a1a1b5' } },
+                                x: { grid: { display: false }, ticks: { color: '#a1a1b5' } }
+                            }
+                        }
+                    });
+
+                    // Populate Recent Signups Table
+                    const recentTbody = document.querySelector('#recentTable tbody');
+                    recentTbody.innerHTML = '';
                     data.recent_players.forEach((p, index) => {
-                        tbody.innerHTML += `
+                        recentTbody.innerHTML += `
                             <tr>
                                 <td>#${index + 1}</td>
                                 <td>
@@ -245,10 +293,29 @@ DASHBOARD_HTML = """
                                         ${p.Name}
                                     </div>
                                 </td>
-                                <td style="color:var(--text-muted);">${p.Email}</td>
-                                <td><span class="status-badge">Active</span></td>
+                                <td><span class="status-badge">New</span></td>
                                 <td style="color:var(--text-muted);">${p.Date}</td>
-                                <td style="color:var(--text-muted);">${p.Device}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // Populate Top Active Table
+                    const topTbody = document.querySelector('#topPlayersTable tbody');
+                    topTbody.innerHTML = '';
+                    data.top_players.forEach((p) => {
+                        topTbody.innerHTML += `
+                            <tr>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div style="width:30px; height:30px; border-radius:50%; background:#333; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--accent-alt);">
+                                            ${p.Name.charAt(0)}
+                                        </div>
+                                        ${p.Name}
+                                    </div>
+                                </td>
+                                <td style="color:var(--text-muted);">${p.Email}</td>
+                                <td><span class="status-badge alt">Active</span></td>
+                                <td style="color:var(--text-muted);">${p.LastActive}</td>
                             </tr>
                         `;
                     });
@@ -289,7 +356,6 @@ def load_data():
     SECRET_KEY = os.environ.get("SECRET_KEY")
     HEADERS = {"X-SecretKey": SECRET_KEY, "Content-Type": "application/json"}
 
-    # 1. Trigger Export
     export_res = requests.post(
         f"https://{TITLE_ID}.playfabapi.com/Admin/ExportPlayersInSegment",
         headers=HEADERS, json={"SegmentId": SEGMENT_ID}
@@ -298,7 +364,6 @@ def load_data():
     if not export_id:
         return "Failed to start PlayFab export", 500
 
-    # 2. Poll for Completion
     index_url = None
     while True:
         status_res = requests.post(
@@ -314,20 +379,19 @@ def load_data():
             return "Export failed on PlayFab", 500
         time.sleep(3)
 
-    # 3. Fetch Links
     index_res = requests.get(index_url)
     tsv_links = [link for link in index_res.text.strip().split('\n') if link]
 
-    # 4. Memory-Optimized Processing
     total_raw = 0
     valid_rows = []
     device_counts = {"iOS": 0, "Android": 0, "Unknown": 0}
     country_counts = {}
-    all_dates = []
+    all_signup_dates = []
+    all_login_dates = []
 
+    # Memory-Optimized Processing Loop
     for link in tsv_links:
         try:
-            # Read minimal required data to prevent OOM Code 139 errors
             df = pd.read_csv(link, sep='\t', dtype=str)
             total_raw += len(df)
             
@@ -335,7 +399,6 @@ def load_data():
                 username, email, device = "Guest", None, "Unknown"
                 raw = row.get('LinkedAccounts')
                 
-                # Parse JSON quickly
                 if pd.notna(raw) and raw != '[]':
                     try:
                         clean_str = str(raw).strip('"').replace('""', '"')
@@ -353,7 +416,6 @@ def load_data():
                     except:
                         pass
                 
-                # Track Metrics (All Users)
                 device_counts[device] = device_counts.get(device, 0) + 1
                 
                 country = str(row.get('Locations_LastLogin_CountryCode', 'Unknown'))
@@ -363,58 +425,69 @@ def load_data():
                     
                 created = pd.to_datetime(row.get('Created'), errors='coerce')
                 if pd.notna(created):
-                    all_dates.append(created)
+                    all_signup_dates.append(created)
+
+                last_login = pd.to_datetime(row.get('LastLogin'), errors='coerce')
+                if pd.notna(last_login):
+                    all_login_dates.append(last_login)
                 
-                # Store Cleaned Valid Users Only
+                # Store Valid Users
                 if pd.notna(email) and str(email).lower() != 'null':
                     valid_rows.append({
                         'Username': str(username).title(),
                         'Sign up date': created.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(created) else "",
+                        'Last Login': last_login.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(last_login) else "",
                         'Email': email,
                         'Country': country,
                         'Device': device
                     })
             
-            # Immediately delete the raw shard from RAM
             del df 
         except:
             pass
 
-    # 5. Build the Final Output DataFrame
     final_export_df = pd.DataFrame(valid_rows)
     
-    # Save to Global Cache for one-click downloading later
     global DATA_CACHE
     DATA_CACHE["df"] = final_export_df
 
-    # 6. Final Dashboard Calculations
+    # --- CALCULATE DASHBOARD STATS ---
     valid_count = len(final_export_df)
     guest_count = total_raw - valid_count
     
-    top_country = "N/A"
-    if country_counts:
-        top_country = max(country_counts, key=country_counts.get)
+    top_country = max(country_counts, key=country_counts.get) if country_counts else "N/A"
 
     activity_series = {}
-    if all_dates:
-        dates_series = pd.Series(all_dates)
-        # Get last 14 days of signups
-        activity_series = dates_series.dt.strftime('%b %d').value_counts().sort_index().tail(14).to_dict()
+    if all_signup_dates:
+        s_dates = pd.Series(all_signup_dates)
+        activity_series = s_dates.dt.strftime('%b %d').value_counts().sort_index().tail(14).to_dict()
 
-    # Grab Top 6 Most Recent Players
+    login_series = {}
+    if all_login_dates:
+        l_dates = pd.Series(all_login_dates)
+        login_series = l_dates.dt.strftime('%b %d').value_counts().sort_index().tail(14).to_dict()
+
     recent_players = []
+    top_players = []
+    
     if not final_export_df.empty:
-        # Sort by sign up date and grab top 6
-        sorted_recent = final_export_df.sort_values(by='Sign up date', ascending=False).head(6)
+        # Table 1: Recent Signups
+        sorted_recent = final_export_df.sort_values(by='Sign up date', ascending=False).head(5)
         for _, row in sorted_recent.iterrows():
             recent_players.append({
                 "Name": row['Username'],
+                "Date": row['Sign up date'].split()[0] if row['Sign up date'] else "N/A"
+            })
+            
+        # Table 2: Top Active (Most recent logins with emails)
+        sorted_top = final_export_df[final_export_df['Last Login'] != ""].sort_values(by='Last Login', ascending=False).head(5)
+        for _, row in sorted_top.iterrows():
+            top_players.append({
+                "Name": row['Username'],
                 "Email": row['Email'],
-                "Date": row['Sign up date'].split()[0] if row['Sign up date'] else "N/A",
-                "Device": row['Device']
+                "LastActive": row['Last Login'].split()[0] if row['Last Login'] else "N/A"
             })
 
-    # 7. Return JSON payload to frontend
     payload = {
         "metrics": {
             "total": total_raw,
@@ -424,7 +497,9 @@ def load_data():
         },
         "devices": device_counts,
         "activity": activity_series,
-        "recent_players": recent_players
+        "logins": login_series,
+        "recent_players": recent_players,
+        "top_players": top_players
     }
 
     return jsonify(payload)
@@ -446,7 +521,7 @@ def download_csv():
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-disposition": "attachment; filename=TGG_Players_Clean.csv"}
+        headers={"Content-disposition": "attachment; filename=TGG_Players_Info.csv"}
     )
 
 if __name__ == '__main__':
