@@ -66,11 +66,11 @@ TITLE_ID = "10B741"
 SEGMENT_ID = "A1DF5646512D0477"
 HEADERS = {"X-SecretKey": SECRET_KEY, "Content-Type": "application/json"}
 
-@app.route('/generate-export')
+@app.route('/generate-export', methods=['POST']) 
 def generate_export():
     # 1. Security Check
-    data = request.json
-    if data.get('token') != os.environ.get("SECRET_TOKEN"):
+    data = request.get_json() 
+    if not data or data.get('token') != os.environ.get("SECRET_TOKEN"):
         return "Invalid Token", 403
         
     # 2. Trigger Export
