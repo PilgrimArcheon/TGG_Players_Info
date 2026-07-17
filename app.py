@@ -6,11 +6,45 @@ app = Flask(__name__)
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html>
+<head>
+    <style>
+        body { 
+            background-color: #000000; 
+            color: #ffffff; 
+            font-family: 'Helvetica', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .container { 
+            text-align: center; 
+            background: #111; 
+            padding: 40px; 
+            border-radius: 12px; 
+            border: 1px solid #333;
+        }
+        h1 { color: #FFA500; letter-spacing: 2px; }
+        input { 
+            padding: 12px; width: 250px; border-radius: 6px; 
+            border: none; margin-bottom: 20px; display: block; margin: 0 auto 20px;
+        }
+        button { 
+            background-color: #FFA500; color: #000; border: none; 
+            padding: 15px 30px; font-weight: bold; border-radius: 6px; cursor: pointer;
+        }
+        button:hover { background-color: #e69500; }
+        #status { color: #FFA500; margin-top: 15px; display: block; }
+    </style>
+</head>
 <body>
-    <h1>TGG Player Export</h1>
-    <input type="password" id="tokenInput" placeholder="Enter Secret Token">
-    <button id="exportBtn" onclick="startExport()">Start Export</button>
-    <p>Status: <span id="status">Waiting for input...</span></p>
+    <div class="container">
+        <h1>TRIVIA</h1>
+        <input type="password" id="tokenInput" placeholder="Enter Secret Token">
+        <button id="exportBtn" onclick="startExport()">PLAY NOW →</button>
+        <p id="status">Waiting for input...</p>
+    </div>
 
     <script>
         async function startExport() {
@@ -19,7 +53,7 @@ DASHBOARD_HTML = """
             const btn = document.getElementById('exportBtn');
             
             btn.disabled = true;
-            status.innerText = "Processing... this can take a minute.";
+            status.innerText = "Processing data...";
             
             try {
                 const response = await fetch('/generate-export', {
