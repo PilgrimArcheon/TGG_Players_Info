@@ -92,7 +92,7 @@ DASHBOARD_HTML = """
                 <h2 style="margin: 5px 0 0 0;">Admin Overview</h2>
             </div>
             <button onclick="downloadCSV()" style="width: auto; padding: 12px 25px;">
-                ↓ DOWNLOAD CLEAN CSV
+                ↓ EXPORT CSV
             </button>
         </div>
 
